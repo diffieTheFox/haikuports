@@ -1,0 +1,24 @@
+From 16f4cab4d10145b3f0836fbf3fd2412466aa2368 Mon Sep 17 00:00:00 2001
+From: diffie <haiku-dev@diffie.eu>
+Date: Fri, 4 Sep 2026 05:40:30 +0200
+Subject: [PATCH 2/3] Fix include guard clash with Haiku system headers
+
+---
+ errors/errors.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/errors/errors.h b/errors/errors.h
+index 869f9a6..d523339 100644
+--- a/errors/errors.h
++++ b/errors/errors.h
+@@ -1,5 +1,5 @@
+-#ifndef _ERRORS_H
+-#define _ERRORS_H
++#ifndef PICOBOOT_ERRORS_H
++#define PICOBOOT_ERRORS_H
+ 
+ #ifdef _WIN32
+ #undef ERROR_CANCELLED
+-- 
+2.54.0
+

@@ -1,0 +1,120 @@
+SUMMARY="Tool for flashing RP2xxx MCUs and managing firmware images"
+DESCRIPTION="
+Command-line tool for flashing and configuring microcontrollers and devkits \
+made by Raspberry Pi and working with their firmware images. Provides \
+command \"picotool\" capable of doing actions such as erasing and writing \
+external SPI Flash (or executing the firmware from the SRAM), programming \
+on-chip one-time-programmable memory, querying information about the chip, \
+rebooting and preparing firmware images in the UF2 format.
+	
+The picotool uses USB to communicate with these chips using their in-ROM \
+bootloader. RP2xxx chips can be also flashed by writing UF2 blob to a USB\
+Mass Storage-class device, which their bootloader provides by default, when \
+in BOOTSEL mode. For flashing using the SWD interface, see \"openocd\" instead, \
+which can be used with a hardware debugger (e.g., another RP2xxx running the
+pico-debugprobe firmware).
+	
+For integration with the Pico SDK, install also \"picotool_devel\".
+"
+HOMEPAGE="https://github.com/raspberrypi/picotool"
+COPYRIGHT="2020 Raspberry Pi (Trading) Ltd."
+# picotool -- 3-cl. BSD
+# pico-sdk -- 3-cl. BSD (used during build)
+#   (note that we don't use Git submodules)
+# oofatfs  -- 1-cl. BSD
+# clipp, nlohmann_json -- MIT
+# whereami -- Presumably WTFPL, given that the picoboot repo
+#             doesn't include the license, but whereami is
+#             also licensed under MIT.
+LICENSE="
+	BSD (3-clause)
+	MIT
+"
+REVISION="1"
+# Version of the Raspberry Pico SDK to build with.
+# (This may differ from the picotool version!)
+sdkVersion="2.3.0"
+# The picotool requires a source tree of mbedtls
+# to build.
+mbedtlsVersion="3.6.5"
+SOURCE_URI="https://github.com/raspberrypi/picotool/archive/refs/tags/${portVersion}.tar.gz"
+SOURCE_FILENAME="picotool-$portVersion.tar.gz"
+SOURCE_DIR="picotool-$portVersion"
+CHECKSUM_SHA256="97aaf36800d2317683528cba5762e3d4e7a5de0cba729d28011a6ee94b3b7538"
+SOURCE_URI_2="https://github.com/raspberrypi/pico-sdk/archive/refs/tags/${sdkVersion}.tar.gz"
+SOURCE_FILENAME_2="pico-sdk-$portVersion.tar.gz"
+SOURCE_DIR_2="pico-sdk-$sdkVersion"
+CHECKSUM_SHA256_2="243fc6c2ae4d1c89d03eba1ba538cb7b92ae2c35ba1d8b80da501f37bcf0763e"
+SOURCE_URI="https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-$portVersion/mbedtls-$portVersion.tar.bz2"
+CHECKSUM_SHA256="4a11f1777bb95bf4ad96721cac945a26e04bf19f57d905f241fe77ebeddf46d8"
+PATCHES="
+	0001-Allow-Haiku-in-portable_endian-platform-check.patch
+	0002-Fix-include-guard-clash-with-Haiku-system-headers.patch
+	0003-Allow-using-nix-usleep-on-Haiku.patch
+"
+
+ARCHITECTURES="x86_64 ?x86 !x86_gcc2"
+SECONDARY_ARCHITECTURES="?x86"
+
+commandBinDir=$binDir
+commandSuffix=$secondaryArchSuffix
+
+PROVIDES="
+	picotool$secondaryArchSuffix = $portVersion
+	cmd:picotool$commandSuffix = $portVersion
+"
+REQUIRES="
+	lib:libusb_1.0$secondaryArchSuffix
+	lib:libroot$secondaryArchSuffix
+"
+PROVIDES_devel="
+	picotool${secondaryArchSuffix}_devel
+"
+REQUIRES_devel="
+	picotool${secondaryArchSuffix} == $portVersion base
+"
+BUILD_REQUIRES="
+	devel:libusb_1.0$secondaryArchSuffix
+"
+BUILD_PREREQUIRES="
+	haiku_devel$secondaryArchSuffix
+	cmd:cmake
+	cmd:gcc$secondaryArchSuffix
+	cmd:g++$secondaryArchSuffix
+	cmd:git
+	cmd:make
+"
+
+#defineDebugInfoPackage picotool$secondaryArchSuffix \
+#	"$binDir"/picotool
+
+set -x
+
+BUILD()
+{
+	cmake -S . -B build -G"Unix Makefiles" \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DCMAKE_INSTALL_PREFIX="$prefix" \
+		-DCMAKE_INSTALL_DATAROOTDIR=data \
+		-DCMAKE_INSTALL_LIBEXECDIR=lib \
+		-DCMAKE_INSTALL_LIBDIR=lib \
+		-DPICO_MBEDTLS_PATH="$sourceDir3" \
+		-DPICO_SDK_PATH="$sourceDir2"
+	cmake --build build $jobArgs
+}
+
+INSTALL()
+{
+	cmake --install build
+	# The set of the installed files is quite minimal,
+	# we don't probably need to touch anything.
+	# Expected installed files:
+	#  - $prefix/bin/picotool
+	#  - $prefix/lib/cmake/picotool/*.cmake
+	#  - $prefix/dataDir/picotool/*.elf + *.json
+
+	# Keep only the binary in the main package. The picotool_devel
+	# package provides CMake definition files for use by the SDK.
+	packageEntries devel \
+		$prefix/lib/cmake
+}
